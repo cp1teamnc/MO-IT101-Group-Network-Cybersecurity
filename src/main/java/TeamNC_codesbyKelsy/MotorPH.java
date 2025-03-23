@@ -20,25 +20,151 @@ public class MotorPH {
         System.out.println("Welcome to MotorPH Payroll!");
         System.out.println("[1] Compute Payroll for a Specific Employee");
         System.out.println("[2] Compute Payroll for All Employees");
+        System.out.println("[3] Search Employee");
+        System.out.println("[4] Add New Employee");
+        System.out.println("[5] Edit Employee Details");
+        System.out.println("[6] Delete Employee");
         System.out.print("Enter selection: ");
         int choice = inputScanner.nextInt();
         inputScanner.nextLine(); // Consume newline
 
-        if (choice == 1) {
-            System.out.print("\nEnter Employee Number: ");
-            String searchEmployeeNumber = inputScanner.nextLine().trim();
+        switch (choice) {
+            case 1 -> {
+                System.out.print("\nEnter Employee Number: ");
+                String searchEmployeeNumber = inputScanner.nextLine().trim();
 
-            if (searchEmployeeNumber.isEmpty()) {
-                System.out.println("No input provided. Exiting program.");
-                return;
+                if (searchEmployeeNumber.isEmpty()) {
+                    System.out.println("No input provided. Exiting program.");
+                    return;
+                }
+                processPayrollForEmployee(searchEmployeeNumber, employeeFilePath, attendanceFilePath);
             }
-            processPayrollForEmployee(searchEmployeeNumber, employeeFilePath, attendanceFilePath);
-        } else if (choice == 2) {
-            processPayrollForAllEmployees(employeeFilePath, attendanceFilePath);
-        } else {
-            System.out.println("Invalid choice. Exiting program.");
+            case 2 -> processPayrollForAllEmployees(employeeFilePath, attendanceFilePath);
+            case 3 -> searchEmployee(employeeFilePath, inputScanner);
+            case 4 -> addEmployee(employeeFilePath, inputScanner);
+            case 5 -> editEmployee(employeeFilePath, inputScanner);
+            case 6 -> deleteEmployee(employeeFilePath, inputScanner);
+            default -> System.out.println("Invalid choice. Exiting program.");
         }
     }
+
+    private static void addEmployee(String employeeFilePath, Scanner inputScanner) {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(employeeFilePath, true))) {
+            System.out.print("Enter Employee Number: ");
+            String employeeNumber = inputScanner.nextLine().trim();
+            System.out.print("Enter First Name: ");
+            String firstName = inputScanner.nextLine().trim();
+            System.out.print("Enter Last Name: ");
+            String lastName = inputScanner.nextLine().trim();
+            System.out.print("Enter Birthdate (MM/dd/yyyy): ");
+            String birthDate = inputScanner.nextLine().trim();
+            System.out.print("Enter Hourly Rate: ");
+            String hourlyRate = inputScanner.nextLine().trim();
+            System.out.print("Enter Rice Subsidy: ");
+            String riceSubsidy = inputScanner.nextLine().trim();
+            System.out.print("Enter Phone Allowance: ");
+            String phoneAllowance = inputScanner.nextLine().trim();
+            System.out.print("Enter Clothing Allowance: ");
+            String clothingAllowance = inputScanner.nextLine().trim();
+
+            if (!employeeNumber.isEmpty() && !firstName.isEmpty() && !lastName.isEmpty()) {
+                String employeeData = String.join(",", employeeNumber, firstName, lastName, birthDate, "", "", "", "", "", "", "", "", "", "", riceSubsidy, phoneAllowance, clothingAllowance, "", hourlyRate);
+                writer.write(employeeData);
+                writer.newLine();
+                System.out.println("Employee added successfully!");
+            } else {
+                System.out.println("Employee details were incomplete. Error adding employee.");
+            }
+        } catch (IOException e) {
+            System.out.println("Error adding employee: " + e.getMessage());
+        }
+    }
+
+    private static void editEmployee(String employeeFilePath, Scanner inputScanner) throws CsvValidationException {
+        List<String[]> employees = readEmployeeFile(employeeFilePath);
+        System.out.print("Enter Employee Number to Edit: ");
+        String employeeNumber = inputScanner.nextLine().trim();
+
+        for (String[] employee : employees) {
+            if (employee[0].equals(employeeNumber)) {
+                System.out.print("Enter New First Name (leave blank to keep current): ");
+                String firstName = inputScanner.nextLine().trim();
+                if (!firstName.isEmpty()) employee[1] = firstName;
+
+                System.out.print("Enter New Last Name (leave blank to keep current): ");
+                String lastName = inputScanner.nextLine().trim();
+                if (!lastName.isEmpty()) employee[2] = lastName;
+
+                System.out.print("Enter New Hourly Rate (leave blank to keep current): ");
+                String hourlyRate = inputScanner.nextLine().trim();
+                if (!hourlyRate.isEmpty()) employee[18] = hourlyRate;
+
+                writeEmployeeFile(employeeFilePath, employees);
+                System.out.println("Employee details updated successfully!");
+                return;
+            }
+        }
+        System.out.println("Employee not found.");
+    }
+
+    private static void deleteEmployee(String employeeFilePath, Scanner inputScanner) throws CsvValidationException {
+        List<String[]> employees = readEmployeeFile(employeeFilePath);
+        System.out.print("Enter Employee Number to Delete: ");
+        String employeeNumber = inputScanner.nextLine().trim();
+
+        boolean removed = employees.removeIf(employee -> employee[0].equals(employeeNumber));
+        if (removed) {
+            writeEmployeeFile(employeeFilePath, employees);
+            System.out.println("Employee deleted successfully!");
+        } else {
+            System.out.println("Employee not found.");
+        }
+    }
+
+    private static void searchEmployee(String employeeFilePath, Scanner inputScanner) throws CsvValidationException {
+        List<String[]> employees = readEmployeeFile(employeeFilePath);
+        System.out.print("Enter Employee Number to Search: ");
+        String employeeNumber = inputScanner.nextLine().trim();
+
+        for (String[] employee : employees) {
+            if (employee[0].equals(employeeNumber)) {
+                System.out.println("Employee Number: " + employee[0]);
+                System.out.println("First Name: " + employee[1]);
+                System.out.println("Last Name: " + employee[2]);
+                System.out.println("Hourly Rate: PHP " + employee[18]);
+                return;
+            }
+        }
+        System.out.println("Employee not found.");
+    }
+
+    private static List<String[]> readEmployeeFile(String employeeFilePath) throws CsvValidationException {
+        List<String[]> employees = new ArrayList<>();
+        try (CSVReader reader = new CSVReader(new FileReader(employeeFilePath))) {
+            reader.readNext(); // Skip header
+            String[] line;
+            while ((line = reader.readNext()) != null) {
+                employees.add(line);
+            }
+        } catch (IOException e) {
+            System.out.println("Error reading employee file: " + e.getMessage());
+        }
+        return employees;
+    }
+
+    private static void writeEmployeeFile(String employeeFilePath, List<String[]> employees) {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(employeeFilePath))) {
+            writer.write("EmployeeNumber,FirstName,LastName,BirthDate,,,,,,,,,,,RiceSubsidy,PhoneAllowance,ClothingAllowance,,HourlyRate\n");
+            for (String[] employee : employees) {
+                writer.write(String.join(",", employee));
+                writer.newLine();
+            }
+        } catch (IOException e) {
+            System.out.println("Error writing to employee file: " + e.getMessage());
+        }
+    }
+
+    // Jerell did not change any existing methods like processPayrollForEmployee, processPayrollForAllEmployees, and calculateWeeklyWorkHours
 
     private static void processPayrollForEmployee(String employeeNumber, String employeeFilePath, String attendanceFilePath) {
         try (CSVReader reader = new CSVReader(new FileReader(employeeFilePath))) {
